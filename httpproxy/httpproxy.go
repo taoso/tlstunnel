@@ -22,6 +22,8 @@ type Proxy struct {
 	authKey string
 
 	isRemote bool
+
+	serverName string
 }
 
 var httpConnected = []byte("HTTP/1.1 200 Connection established\r\n\r\n")
@@ -38,7 +40,7 @@ func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool, authKey strin
 		serverName = remote[:i]
 	}
 
-	p := &Proxy{authKey: authKey}
+	p := &Proxy{authKey: authKey, serverName: serverName}
 
 	p.Dial = func(address string) (conn net.Conn, err error) {
 		host := address[:strings.LastIndex(address, ":")]
@@ -122,6 +124,13 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		host = req.Host
 		if strings.LastIndex(host, ":") == -1 {
 			host += ":80"
+		}
+
+		if p.isRemote && strings.HasSuffix(host, p.serverName) {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "text/plain")
+			w.Write([]byte("Across the Great Wall we can reach every corner in the world."))
+			return
 		}
 	}
 
