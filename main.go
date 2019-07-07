@@ -35,17 +35,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	var err error
 	if localAddr != "" {
-		log.Fatal(http.ListenAndServe(localAddr, httpproxy.NewLocalProxy(remoteAddr, useTLS)))
+		err = http.ListenAndServe(localAddr, httpproxy.NewLocalProxy(remoteAddr, useTLS))
 	} else {
 		if useTLS {
 			certmagic.Default.Email = "mespebapsi@desoz.com"
 			certmagic.Default.CA = certmagic.LetsEncryptProductionCA
 
-			log.Fatal(certmagic.HTTPS([]string{remoteAddr}, httpproxy.NewRemoteProxy()))
+			err = certmagic.HTTPS([]string{remoteAddr}, httpproxy.NewRemoteProxy())
 		} else {
 			remoteAddr = remoteAddr[strings.LastIndex(remoteAddr, ":"):]
-			log.Fatal(http.ListenAndServe(remoteAddr, httpproxy.NewRemoteProxy()))
+			err = http.ListenAndServe(remoteAddr, httpproxy.NewRemoteProxy())
 		}
+	}
+
+	if err != nil {
+		log.Fatal(err)
 	}
 }
