@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/lvht/tlstunnel/badhost"
 	"github.com/lvht/tlstunnel/httpproxy"
 	"github.com/mholt/certmagic"
 )
@@ -37,7 +38,12 @@ func main() {
 
 	var err error
 	if localAddr != "" {
-		err = http.ListenAndServe(localAddr, httpproxy.NewLocalProxy(remoteAddr, useTLS))
+		p, err := badhost.NewPool(true)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = http.ListenAndServe(localAddr, httpproxy.NewLocalProxy(remoteAddr, useTLS, p))
 	} else {
 		if useTLS {
 			certmagic.Default.Email = "mespebapsi@desoz.com"

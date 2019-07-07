@@ -5,11 +5,14 @@ import (
 	"crypto/tls"
 	"errors"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"strings"
 	"time"
+
+	"github.com/lvht/tlstunnel/badhost"
 )
 
 // Proxy http 隧道服务
@@ -21,7 +24,7 @@ var httpConnected = []byte("HTTP/1.1 200 Connection established\r\n\r\n")
 
 // NewLocalProxy 本地隧道服务
 // 通过 http CONNECT 请求要求远程服务建立隧道
-func NewLocalProxy(remote string, useTLS bool) *Proxy {
+func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool) *Proxy {
 	serverName := remote
 
 	i := strings.LastIndex(remote, ":")
@@ -34,7 +37,23 @@ func NewLocalProxy(remote string, useTLS bool) *Proxy {
 	p := &Proxy{}
 
 	p.Dial = func(address string) (conn net.Conn, err error) {
-		conn, err = net.DialTimeout("tcp", remote, 500*time.Millisecond)
+		host := address[:strings.LastIndex(address, ":")]
+		if pool.HasSuffix(host) {
+			goto proxy
+		}
+
+		conn, err = net.DialTimeout("tcp", address, 3*time.Second)
+		if err == nil {
+			log.Printf("dial %s", address)
+			return
+		}
+
+		log.Printf("remeber bad host: %s, err: %+v", host, err)
+		pool.Add(host)
+
+	proxy:
+		log.Printf("dial %s via %s", address, remote)
+		conn, err = net.DialTimeout("tcp", remote, 1*time.Second)
 		if err != nil {
 			return
 		}

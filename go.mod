@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/derekparker/trie v0.0.0-20190322172448-1ce4922c7ad9
 	github.com/go-acme/lego v2.6.0+incompatible // indirect
 	github.com/klauspost/cpuid v1.2.1 // indirect
 	github.com/mholt/certmagic v0.6.1
