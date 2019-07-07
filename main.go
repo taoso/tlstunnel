@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	proxy "github.com/lvht/tlstunnel/httpproxy"
+	"github.com/lvht/tlstunnel/httpproxy"
 	"github.com/mholt/certmagic"
 )
 
@@ -36,16 +36,16 @@ func main() {
 	}
 
 	if localAddr != "" {
-		log.Fatal(http.ListenAndServe(localAddr, proxy.NewLocalProxy(remoteAddr, useTLS)))
+		log.Fatal(http.ListenAndServe(localAddr, httpproxy.NewLocalProxy(remoteAddr, useTLS)))
 	} else {
 		if useTLS {
 			certmagic.Default.Email = "mespebapsi@desoz.com"
 			certmagic.Default.CA = certmagic.LetsEncryptProductionCA
 
-			log.Fatal(certmagic.HTTPS([]string{remoteAddr}, proxy.NewRemoteProxy()))
+			log.Fatal(certmagic.HTTPS([]string{remoteAddr}, httpproxy.NewRemoteProxy()))
 		} else {
 			remoteAddr = remoteAddr[strings.LastIndex(remoteAddr, ":"):]
-			log.Fatal(http.ListenAndServe(remoteAddr, proxy.NewRemoteProxy()))
+			log.Fatal(http.ListenAndServe(remoteAddr, httpproxy.NewRemoteProxy()))
 		}
 	}
 }
