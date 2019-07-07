@@ -18,13 +18,17 @@ import (
 // Proxy http 隧道服务
 type Proxy struct {
 	Dial func(address string) (net.Conn, error)
+
+	authKey string
+
+	isRemote bool
 }
 
 var httpConnected = []byte("HTTP/1.1 200 Connection established\r\n\r\n")
 
 // NewLocalProxy 本地隧道服务
 // 通过 http CONNECT 请求要求远程服务建立隧道
-func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool) *Proxy {
+func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool, authKey string) *Proxy {
 	serverName := remote
 
 	i := strings.LastIndex(remote, ":")
@@ -34,7 +38,7 @@ func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool) *Proxy {
 		serverName = remote[:i]
 	}
 
-	p := &Proxy{}
+	p := &Proxy{authKey: authKey}
 
 	p.Dial = func(address string) (conn net.Conn, err error) {
 		host := address[:strings.LastIndex(address, ":")]
@@ -67,7 +71,9 @@ func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool) *Proxy {
 			})
 		}
 
-		_, err = conn.Write([]byte("CONNECT " + address + " HTTP/1.1\r\n\r\n"))
+		req := "CONNECT " + address + " HTTP/1.1\r\n" +
+			"Auth-Key:" + p.authKey + "\r\n\r\n"
+		_, err = conn.Write([]byte(req))
 		if err != nil {
 			return
 		}
@@ -90,17 +96,24 @@ func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool) *Proxy {
 
 // NewRemoteProxy 远各隧道服务
 // 发送客户端请求到目标服务器
-func NewRemoteProxy() *Proxy {
+func NewRemoteProxy(authKey string) *Proxy {
 	return &Proxy{
 		Dial: func(address string) (net.Conn, error) {
 			return net.DialTimeout("tcp", address, 500*time.Millisecond)
 		},
+		isRemote: true,
+		authKey:  authKey,
 	}
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var host string
 	if req.Method == http.MethodConnect {
+		if p.isRemote && req.Header.Get("Auth-Key") != p.authKey {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+
 		host = req.RequestURI
 		if strings.LastIndex(host, ":") == -1 {
 			host += ":443"
@@ -115,6 +128,8 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	upConn, err := p.Dial(host)
 	if err != nil {
 		http.Error(w, "cannot connect to upstream", http.StatusBadGateway)
+		log.Println("dial to upstream err: ", err)
+		upConn.Close()
 		return
 	}
 
@@ -122,6 +137,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	downConn, _, err := hj.Hijack()
 	if err != nil {
 		http.Error(w, "cannot hijack", http.StatusInternalServerError)
+		downConn.Close()
 		return
 	}
 
