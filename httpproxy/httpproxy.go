@@ -2,6 +2,7 @@ package httpproxy
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"io"
 	"net"
@@ -20,13 +21,31 @@ var httpConnected = []byte("HTTP/1.1 200 Connection established\r\n\r\n")
 
 // NewLocalProxy 本地隧道服务
 // 通过 http CONNECT 请求要求远程服务建立隧道
-func NewLocalProxy(remote string) *Proxy {
+func NewLocalProxy(remote string, useTLS bool) *Proxy {
+	serverName := remote
+
+	i := strings.LastIndex(remote, ":")
+	if i == -1 {
+		remote = remote + ":443"
+	} else {
+		serverName = remote[:i]
+	}
+
 	p := &Proxy{}
 
 	p.Dial = func(address string) (conn net.Conn, err error) {
 		conn, err = net.DialTimeout("tcp", remote, 500*time.Millisecond)
 		if err != nil {
 			return
+		}
+
+		if useTLS {
+			conn = tls.Client(conn, &tls.Config{
+				ServerName: serverName,
+				MinVersion: tls.VersionTLS13,
+
+				ClientSessionCache: tls.NewLRUClientSessionCache(0),
+			})
 		}
 
 		_, err = conn.Write([]byte("CONNECT " + address + " HTTP/1.1\r\n\r\n"))
@@ -87,15 +106,15 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if req.Method != http.MethodConnect {
+	if req.Method == http.MethodConnect {
+		downConn.Write(httpConnected)
+	} else {
 		dump, err := httputil.DumpRequestOut(req, true)
 		if err != nil {
 			http.Error(w, "cannot dump rquest", http.StatusInternalServerError)
 			return
 		}
 		upConn.Write(dump)
-	} else {
-		downConn.Write(httpConnected)
 	}
 
 	go func() {
