@@ -138,7 +138,6 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(w, "cannot connect to upstream", http.StatusBadGateway)
 		log.Println("dial to upstream err: ", err)
-		upConn.Close()
 		return
 	}
 

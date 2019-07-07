@@ -56,7 +56,12 @@ func main() {
 			certmagic.Default.Email = "mespebapsi@desoz.com"
 			certmagic.Default.CA = certmagic.LetsEncryptProductionCA
 
-			err = certmagic.HTTPS([]string{remoteAddr}, handler)
+			ln, err := certmagic.Listen([]string{remoteAddr})
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			err = http.Serve(ln, handler)
 		} else {
 			remoteAddr = remoteAddr[strings.LastIndex(remoteAddr, ":"):]
 			err = http.ListenAndServe(remoteAddr, handler)
