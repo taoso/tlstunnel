@@ -38,6 +38,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// 使用 Auth-Key 传输，统一做一下 base64 处理
 	authKey = base64.StdEncoding.EncodeToString([]byte(authKey))
 
 	var err error

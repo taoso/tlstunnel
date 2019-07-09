@@ -63,6 +63,7 @@ func (p *Pool) HasSuffix(host string) bool {
 	return false
 }
 
+// abc -> cba
 func strrev(s string) string {
 	l := len(s)
 	if l == 0 {

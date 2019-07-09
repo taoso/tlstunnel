@@ -26,6 +26,8 @@ type Proxy struct {
 	serverName string
 }
 
+var slogan = []byte("Across the Great Wall we can reach every corner in the world.")
+
 var httpConnected = []byte("HTTP/1.1 200 Connection established\r\n\r\n")
 
 // NewLocalProxy 本地隧道服务
@@ -126,10 +128,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			host += ":80"
 		}
 
-		if p.isRemote && strings.HasSuffix(host, p.serverName) {
+		if p.isRemote && host == p.serverName {
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "text/plain")
-			w.Write([]byte("Across the Great Wall we can reach every corner in the world."))
+			w.Write(slogan)
 			return
 		}
 	}
