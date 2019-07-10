@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/lvht/tlstunnel/badhost"
+	"github.com/lvht/tlstunnel/tun"
 )
 
 // Proxy http 隧道服务
@@ -119,6 +120,13 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 
 		host = req.RequestURI
+
+		// CONNECT * HTTP/1.1 请求表示建立 tun 隧道
+		if host == "*" {
+			tun.ServerLoop(w, req)
+			return
+		}
+
 		if strings.LastIndex(host, ":") == -1 {
 			host += ":443"
 		}

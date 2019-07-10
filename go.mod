@@ -9,6 +9,7 @@ require (
 	github.com/klauspost/cpuid v1.2.1 // indirect
 	github.com/mholt/certmagic v0.6.1
 	github.com/miekg/dns v1.1.15 // indirect
+	github.com/songgao/water v0.0.0-20190623021929-8567d1527789
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4 // indirect
 	golang.org/x/net v0.0.0-20190628185345-da137c7871d7 // indirect
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect

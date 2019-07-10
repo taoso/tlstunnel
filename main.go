@@ -10,6 +10,7 @@ import (
 
 	"github.com/lvht/tlstunnel/badhost"
 	"github.com/lvht/tlstunnel/httpproxy"
+	"github.com/lvht/tlstunnel/tun"
 	"github.com/mholt/certmagic"
 )
 
@@ -19,6 +20,7 @@ var (
 	localAddr, remoteAddr, authKey string
 
 	useTLS bool
+	useTUN bool
 )
 
 func init() {
@@ -28,6 +30,7 @@ func init() {
 	flag.StringVar(&remoteAddr, "remote", "", "remote listen address, 0.0.0.0:443, e.g.")
 	flag.StringVar(&authKey, "auth", "", "auth key for remote server")
 	flag.BoolVar(&useTLS, "tls", false, "enable tls for tunnel(local only)")
+	flag.BoolVar(&useTUN, "tun", false, "enable tun for tunnel(local only)")
 }
 
 func main() {
@@ -43,13 +46,17 @@ func main() {
 
 	var err error
 	if localAddr != "" {
-		p, err := badhost.NewPool(true)
-		if err != nil {
-			log.Fatal(err)
-		}
+		if useTUN {
+			err = tun.ClientLoop(authKey, remoteAddr)
+		} else {
+			p, err := badhost.NewPool(true)
+			if err != nil {
+				log.Fatal(err)
+			}
 
-		handler := httpproxy.NewLocalProxy(remoteAddr, useTLS, p, authKey)
-		err = http.ListenAndServe(localAddr, handler)
+			handler := httpproxy.NewLocalProxy(remoteAddr, useTLS, p, authKey)
+			err = http.ListenAndServe(localAddr, handler)
+		}
 	} else {
 		handler := httpproxy.NewRemoteProxy(authKey)
 
