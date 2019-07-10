@@ -87,8 +87,11 @@ func ServerLoop(w http.ResponseWriter, req *http.Request) (err error) {
 	}
 	defer tun.Close()
 
-	hostIP := net.ParseIP("10.8.6.1")
-	clientIP := net.ParseIP("10.8.6.2")
+	hostIP := nextIP()
+	clientIP := nextIP()
+
+	defer releaseIP(hostIP)
+	defer releaseIP(clientIP)
 
 	log.Printf("host: %s -> %s", hostIP, clientIP)
 
