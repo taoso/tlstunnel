@@ -51,7 +51,7 @@ func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool, authKey strin
 			goto proxy
 		}
 
-		conn, err = net.DialTimeout("tcp", address, 3*time.Second)
+		conn, err = net.DialTimeout("tcp", address, 300*time.Millisecond)
 		if err == nil {
 			log.Printf("dial %s", address)
 			return

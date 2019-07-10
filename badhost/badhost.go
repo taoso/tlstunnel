@@ -2,23 +2,21 @@ package badhost
 
 import (
 	"log"
-	"time"
 
-	"github.com/derekparker/trie"
 	"github.com/lvht/tlstunnel/badhost/gfwlist"
 )
 
 // Pool 保存无法直连的主机列表
 type Pool struct {
-	black *trie.Trie
-	temp  *trie.Trie
+	black *Trie
+	temp  *Trie
 }
 
 // NewPool creat new Pool
 func NewPool(useGFWList bool) (p *Pool, err error) {
 	p = &Pool{
-		black: trie.New(),
-		temp:  trie.New(),
+		black: NewTrie(),
+		temp:  NewTrie(),
 	}
 
 	if useGFWList {
@@ -37,7 +35,7 @@ func (p *Pool) loadGFWList() {
 
 	for _, d := range domains {
 		d = strrev(d)
-		p.black.Add(d, nil)
+		p.black.Add(d)
 	}
 	log.Println("gfwlist loaded")
 }
@@ -45,18 +43,18 @@ func (p *Pool) loadGFWList() {
 // Add 添加一个主机地址，如 google.com
 func (p *Pool) Add(host string) {
 	host = strrev(host)
-	p.temp.Add(host, time.Now())
+	p.temp.Add(host)
 }
 
 // HasSuffix 判断是否有无法连接的记录
 func (p *Pool) HasSuffix(host string) bool {
 	host = strrev(host)
 
-	if p.temp.HasKeysWithPrefix(host) {
+	if p.temp.Find(host) {
 		return true
 	}
 
-	if p.black.HasKeysWithPrefix(host) {
+	if p.black.Find(host) {
 		return true
 	}
 
