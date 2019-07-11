@@ -2,6 +2,7 @@ package tun
 
 import (
 	"crypto/tls"
+	"errors"
 	"io"
 	"log"
 	"net"
@@ -95,25 +96,14 @@ func ServerLoop(w http.ResponseWriter, req *http.Request) (err error) {
 
 	log.Printf("host: %s -> %s", hostIP, clientIP)
 
-	var cmd *exec.Cmd
-	if runtime.GOOS == "linux" {
-		cmd = exec.Command("/sbin/ifconfig", tun.Name(), hostIP.String(), "netmask", "255.255.255.0", "up")
-		if err = cmd.Run(); err != nil {
-			c.Write([]byte("ifconfig faild"))
-			return
-		}
+	if runtime.GOOS != "linux" {
+		return errors.New("only support linux for tun server")
+	}
 
-		cmd = exec.Command("/sbin/ip", "link", "set", "dev", tun.Name(), "mtu", "65535")
-		if err = cmd.Run(); err != nil {
-			c.Write([]byte("set mtu faild"))
-			return
-		}
-	} else {
-		cmd = exec.Command("/sbin/ifconfig", tun.Name(), hostIP.String(), clientIP.String(), "up")
-		if err = cmd.Run(); err != nil {
-			c.Write([]byte("ifconfig faild"))
-			return
-		}
+	args := []string{tun.Name(), hostIP.String(), "pointopoint", clientIP.String(), "up", "mtu", "65535"}
+	if err = exec.Command("/sbin/ifconfig", args...).Run(); err != nil {
+		c.Write([]byte("ifconfig faild"))
+		return
 	}
 
 	if _, err = c.Write(append(clientIP.To4(), hostIP.To4()...)); err != nil {
