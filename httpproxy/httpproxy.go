@@ -3,9 +3,7 @@ package httpproxy
 import (
 	"bytes"
 	"crypto/tls"
-	"errors"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -14,6 +12,8 @@ import (
 
 	"github.com/lvht/tlstunnel/badhost"
 	"github.com/lvht/tlstunnel/tun"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 // Proxy http 隧道服务
@@ -51,19 +51,19 @@ func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool, authKey strin
 			goto proxy
 		}
 
-		conn, err = net.DialTimeout("tcp", address, 300*time.Millisecond)
+		conn, err = net.DialTimeout("tcp", address, 1*time.Second)
 		if err == nil {
-			log.Printf("dial %s", address)
 			return
 		}
 
-		log.Printf("remeber bad host: %s, err: %+v", host, err)
+		log.Infof("remeber bad host: %s, err: %+v", host, err)
 		pool.Add(host)
 
 	proxy:
-		log.Printf("dial %s via %s", address, remote)
+		log.Infof("dial %s via %s", address, remote)
 		conn, err = net.DialTimeout("tcp", remote, 1*time.Second)
 		if err != nil {
+			err = errors.Wrap(err, "dial to remote faild")
 			return
 		}
 
@@ -72,7 +72,7 @@ func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool, authKey strin
 				ServerName: serverName,
 				MinVersion: tls.VersionTLS13,
 
-				ClientSessionCache: tls.NewLRUClientSessionCache(0),
+				ClientSessionCache: tls.NewLRUClientSessionCache(128),
 			})
 		}
 
@@ -80,12 +80,14 @@ func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool, authKey strin
 			"Auth-Key:" + p.authKey + "\r\n\r\n"
 		_, err = conn.Write([]byte(req))
 		if err != nil {
+			err = errors.Wrap(err, "tunnel handshake faild")
 			return
 		}
 
 		buf := make([]byte, len(httpConnected))
 		_, err = conn.Read(buf[:])
 		if err != nil {
+			err = errors.Wrap(err, "read handshake status faild")
 			return
 		}
 
@@ -147,7 +149,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	upConn, err := p.Dial(host)
 	if err != nil {
 		http.Error(w, "cannot connect to upstream", http.StatusBadGateway)
-		log.Println("dial to upstream err: ", err)
+		log.Errorf("dial to upstream err: %+v", err)
 		return
 	}
 

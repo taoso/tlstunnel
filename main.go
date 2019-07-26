@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/base64"
 	"flag"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/lvht/tlstunnel/httpproxy"
 	"github.com/lvht/tlstunnel/tun"
 	"github.com/mholt/certmagic"
+	log "github.com/sirupsen/logrus"
 )
 
 type server struct{}

@@ -4,13 +4,13 @@ import (
 	"crypto/tls"
 	"errors"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"os/exec"
 	"runtime"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/songgao/water"
 )
 

@@ -1,9 +1,8 @@
 package badhost
 
 import (
-	"log"
-
 	"github.com/lvht/tlstunnel/badhost/gfwlist"
+	log "github.com/sirupsen/logrus"
 )
 
 // Pool 保存无法直连的主机列表
