@@ -45,6 +45,13 @@ func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool, authKey strin
 
 	p := &Proxy{authKey: authKey, serverName: serverName}
 
+	tlsCfg := tls.Config{
+		ServerName: serverName,
+		MinVersion: tls.VersionTLS13,
+
+		ClientSessionCache: tls.NewLRUClientSessionCache(128),
+	}
+
 	p.Dial = func(address string) (conn net.Conn, err error) {
 		host := address[:strings.LastIndex(address, ":")]
 		if pool.HasSuffix(host) {
@@ -61,19 +68,14 @@ func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool, authKey strin
 
 	proxy:
 		log.Infof("dial %s via %s", address, remote)
-		conn, err = net.DialTimeout("tcp", remote, 1*time.Second)
+		conn, err = net.Dial("tcp", remote)
 		if err != nil {
 			err = errors.Wrap(err, "dial to remote faild")
 			return
 		}
 
 		if useTLS {
-			conn = tls.Client(conn, &tls.Config{
-				ServerName: serverName,
-				MinVersion: tls.VersionTLS13,
-
-				ClientSessionCache: tls.NewLRUClientSessionCache(128),
-			})
+			conn = tls.Client(conn, &tlsCfg)
 		}
 
 		req := "CONNECT " + address + " HTTP/1.1\r\n" +
