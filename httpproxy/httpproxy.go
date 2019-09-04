@@ -159,9 +159,11 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	downConn, _, err := hj.Hijack()
 	if err != nil {
 		http.Error(w, "cannot hijack", http.StatusInternalServerError)
-		downConn.Close()
 		return
 	}
+
+	defer upConn.Close()
+	defer downConn.Close()
 
 	if req.Method == http.MethodConnect {
 		downConn.Write(httpConnected)
@@ -174,9 +176,48 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		upConn.Write(dump)
 	}
 
+	timeout := 5 * time.Second
 	go func() {
-		io.Copy(upConn, downConn)
+		iocopy(upConn, downConn, timeout)
 	}()
 
-	io.Copy(downConn, upConn)
+	iocopy(downConn, upConn, timeout)
+}
+
+func iocopy(dst io.Writer, src io.Reader, timeout time.Duration) {
+	size := 32 * 1024
+	buf := make([]byte, size)
+
+	timer := time.NewTimer(timeout)
+	ch := make(chan bool, 0)
+
+	go func() {
+		defer func() { ch <- true }()
+
+		for {
+			n, err := src.Read(buf)
+			if err != nil {
+				log.Debug("read", err)
+				return
+			}
+
+			n, err = dst.Write(buf[:n])
+			if err != nil {
+				log.Debug("write", err)
+				return
+			}
+
+			if !timer.Reset(timeout) {
+				return
+			}
+		}
+	}()
+
+	select {
+	case <-ch:
+		log.Debug("finished")
+	case <-timer.C:
+		log.Debug("timeout")
+	}
+	timer.Stop()
 }
