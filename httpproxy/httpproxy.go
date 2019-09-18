@@ -53,20 +53,6 @@ func NewLocalProxy(remote string, useTLS bool, pool *badhost.Pool, authKey strin
 	}
 
 	p.Dial = func(address string) (conn net.Conn, err error) {
-		host := address[:strings.LastIndex(address, ":")]
-		if pool.HasSuffix(host) {
-			goto proxy
-		}
-
-		conn, err = net.DialTimeout("tcp", address, 1*time.Second)
-		if err == nil {
-			return
-		}
-
-		log.Infof("remeber bad host: %s, err: %+v", host, err)
-		pool.Add(host)
-
-	proxy:
 		log.Infof("dial %s via %s", address, remote)
 		conn, err = net.Dial("tcp", remote)
 		if err != nil {

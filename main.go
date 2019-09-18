@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/lvht/tlstunnel/badhost"
 	"github.com/lvht/tlstunnel/httpproxy"
 	"github.com/lvht/tlstunnel/tun"
 	"github.com/mholt/certmagic"
@@ -49,12 +48,7 @@ func main() {
 		if useTUN {
 			err = tun.ClientLoop(authKey, remoteAddr)
 		} else {
-			p, err := badhost.NewPool(true)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			handler := httpproxy.NewLocalProxy(remoteAddr, useTLS, p, authKey)
+			handler := httpproxy.NewLocalProxy(remoteAddr, useTLS, nil, authKey)
 			err = http.ListenAndServe(localAddr, handler)
 		}
 	} else {
